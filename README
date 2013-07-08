@@ -1,0 +1,29 @@
+-- /README/javasrc/src
+
+-------------------------------------------------------------------------
+This file describes an API for pull and push message exchanges used for Management in CCN. Also we will find a brief description of the API classes.
+
+ManagamentAgent.java and ManagementEntity.java are the classes that contain the 
+necessary methods to express pull and push requests.
+
+MA.java and ME.java are the interfaces to create the application which will use this API.
+
+MyInterestListener.java is a class that we will use to capture interests in push requests.
+ 
+We have included two example applications to show how it works. 
+-------------------------------------------------------------------------
+Class methods description
+
+ManagamentAgent.java and ManagementEntity.java:
+
+-pull: It asks for a specific data for a given content name.
+
+-push: It informs to the other side addressed by a name about a data which it wants to send to it.
+
+MA.java and ME.java:
+
+-handleInterest: It receives the data name which we want to send as pull response and returns it
+
+-authorizeContent: It authorizes or not to express an interest for do push requests
+
+-handleContent: It handles the data after push request

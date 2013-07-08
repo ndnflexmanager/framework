@@ -1,0 +1,17 @@
+INSTALL
+
+First at all, is necessary that all API classes are at CCN_HOME/javasrc/src/org/ccnx/ccn/utils.
+
+Go to CCN_HOME/javasrc/src/org/ccnx/ccn/utils and run javac (include
+CCN_HOME/javasrc/lib/bcprovjdk16-143/org/bouncycastle and CCN_HOME/javasrc/src/org/ccnx/ccn to build these classes)
+
+---------------------------------------------------------------------------
+Running the tests
+
+First at all, after building the java classes, it is necesary to configure the underlying CCN network to have connectivity between two end nodes (let's call them "client" and "server"). Use "ccndc add" command for this (see at the ccnx documentation).
+
+In one terminal we run ApplicationME (which will work as server) then we run the ApplicationMA (at the "client" side). To run these
+classes we use the "java" command at CCN_HOME/javasrc/src/.
+
+ApplicationME waits for an interest from ApplicationMA.  After this interest is received, ApplicationMA makes a pull request to scan for networks available in the server. Then, it makes a push request to inform about its ssid.
+

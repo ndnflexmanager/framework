@@ -1,29 +1,28 @@
 -- /README/javasrc/src
 
 -------------------------------------------------------------------------
-This file describes an API for pull and push message exchanges used for Management in CCN. Also we will find a brief description of the API classes.
+This file describes an API to support the communication of management operations over a CCN network, between a Management Agent (MA) and a Management Entity (ME). The API has been developed according to the specifications provided in the Internet draft:
 
-ManagamentAgent.java and ManagementEntity.java are the classes that contain the 
-necessary methods to express pull and push requests.
+"ICN Management Considerations". D. Corujo, K. Pentikousis, I. Vidal. ICNRG Internet-Draft (draft-corujo-icn-mgmt-00), Feb 2013 (Expires Aug 22, 2013)
 
-MA.java and ME.java are the interfaces to create the application which will use this API.
+This version of the API provides a basic implementation that does not include the Discovery procedure defined in Sect. 2.2.1 of the Internet draft. Thus, management communications between MA and ME are not encrypted in this version. Subsequent versions will include the support of the Discovery procedure and security mechanisms to ensure confidentiality of the communications.
 
-MyInterestListener.java is a class that we will use to capture interests in push requests.
- 
-We have included two example applications to show how it works. 
--------------------------------------------------------------------------
-Class methods description
+The API implements two methods, push and pull, which are available to the MA and the ME. Pull allows the ME (MA) to retrieve a specified content from the MA (ME). Push allows the ME (MA) to deliver unsolicited content to the MA (ME), subject to MA (ME) approval. The main files comprising this API are:
 
-ManagamentAgent.java and ManagementEntity.java:
+- ManagementAgent.java: contains the API to be used by an MA. This API provides the implementation of pull/push methods.
+- ManagamentEntity.java: contains the API to be used by an ME application. This API provides the implementation of pull/push methods.
+- MAInterface.java: defines the interface that must be implemented by an MA that uses this API.
+- MEInterface: defines the interface that must be implemented by an ME that uses this API.
 
--pull: It asks for a specific data for a given content name.
+Any MA (ME) using the API must implement MAInterface.java (MEInterface.java). Thus, it must provide an implementation for the following methods:
 
--push: It informs to the other side addressed by a name about a data which it wants to send to it.
+- handleInterest: this method will be called by the API when receiving an Interest for content that must be provided by the application.
+- authorizeContent: it will be called by the API when receiving a request to push unsolicited content. The application must return "true" to accept the content, "false" otherwise.
+- handleContent: this method will be called by the API to provide the application with an unsolicited content that has previously been authorized.
 
-MA.java and ME.java:
+This repository includes an example of MA and ME to illustrate how the API can be used:
 
--handleInterest: It receives the data name which we want to send as pull response and returns it
+- ApplicationMA.java: example of MA using the API. This example of MA pulls from the ME a list of WLAN networks that are available in its vicinity, and prints this list on the screen. Then, it pushes to the ME the ssid of the WLAN network that it has chosen to obtain access connectivity. It prints on the screen wether the ME has authorized the unsolicited content.
 
--authorizeContent: It authorizes or not to express an interest for do push requests
+- ApplicationME.java: example of ME that, using the API, works with the previous MA.
 
--handleContent: It handles the data after push request

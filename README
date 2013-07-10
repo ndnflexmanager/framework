@@ -10,7 +10,7 @@ This version of the API provides a basic implementation that does not include th
 The API implements two methods, push and pull, which are available to the MA and the ME. Pull allows the ME (MA) to retrieve a specified content from the MA (ME). Push allows the ME (MA) to deliver unsolicited content to the MA (ME), subject to MA (ME) approval. The main files comprising this API are:
 
 - ManagementAgent.java: contains the API to be used by an MA. This API provides the implementation of pull/push methods.
-- ManagamentEntity.java: contains the API to be used by an ME application. This API provides the implementation of pull/push methods.
+- ManagementEntity.java: contains the API to be used by an ME application. This API provides the implementation of pull/push methods.
 - MAInterface.java: defines the interface that must be implemented by an MA that uses this API.
 - MEInterface: defines the interface that must be implemented by an ME that uses this API.
 

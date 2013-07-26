@@ -1,23 +1,3 @@
-//==============================================================================
-// Brief   : Interest Listener
-// Authors : Jaime Garcia <jgr@it.uc3m.es>
-//           Iván Vidal Fernández <ividal@it.uc3m.es>
-//           Daniel Corujo <dcorujo@av.it.pt>
-//------------------------------------------------------------------------------
-// Flexible Management Framework
-//
-// Copyright (C) 2013 Universidad Carlos III de Madrid
-// Copyright (C) 2013 Universidade Aveiro
-// Copyright (C) 2013 Instituto de Telecomunicações - Pólo Aveiro
-//
-// This software is distributed under a license. The full license
-// agreement can be found in the file LICENSE in this distribution.
-// This software may not be copied, modified, sold or distributed
-// other than expressed in the named license agreement.
-//
-// This software is distributed without any warranty.
-//==============================================================================
-
 package org.ccnx.ccn.utils;
 
 import java.lang.*;
@@ -26,6 +6,11 @@ import java.util.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.KeyPairGenerator;
+import java.security.KeyPair;
+import java.security.PublicKey;
+import java.security.PrivateKey;
+import java.security.Key;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.util.ArrayList;
@@ -33,6 +18,9 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.logging.Level;
 
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -67,69 +55,125 @@ public class MyInterestListener implements CCNInterestListener  {
 
         private ContentName argName;
         private String maID;
-        private ApplicationME applicationMe;
-	private ApplicationMA applicationMa;
+        private MEInterface applicationMe;
+	private MAInterface applicationMa;
+	private SecretKey key;
+	private byte [] iv;
+	private int type;
 
-	/**
-	 *public MyInterestListener(ContentName argName, String maID, ApplicationME application)
-	 *
-	 *Constructor. For ME.
-	 *
-	 *@param argName		data's name
-	 *@param maID		MA's id 
-	 *@param application	application which uses this api
-	 */
+       /**
+	*public MyInterestListener(ContentName argName, String maID, ApplicationME application)
+	*
+	*Constructor for ME
+	*
+	*@param argName		data's name
+	*@param maID		MA's id 
+	*@param application	application which uses this api
+	*
+	*/
 
-        public MyInterestListener(ContentName argName, String maID, ApplicationME application){
+        public MyInterestListener(ContentName argName, String maID, MEInterface application,SecretKey key,byte [] iv){
 
                 this.argName=argName;
                 this.maID=maID;
                 applicationMe=application;
-
+		this.key=key;
+                this.iv = iv;
+		type=3;
 
         }
 
-	/**
-	 *public MyInterestListener(ContentName argName, ApplicationMA application)
-	 *
-	 *Constructor. For MA.
-	 *
-	 *@param argName		data's name
-	 *@param application	application which uses this api
-	 */
+       /**
+	*public MyInterestListener(ContentName argName, ApplicationMA application)
+	*
+	*Constructor for MA
+	*
+	*@param argName		data's name
+	*@param application	application which uses this api
+	*
+	*/
 
-	public MyInterestListener(ContentName argName, ApplicationMA application){
+	public MyInterestListener(ContentName argName, MAInterface application,SecretKey key,byte [] iv){
 
                 this.argName=argName;
-                this.maID=null;
                 applicationMa=application;
-
+		this.key=key;
+                this.iv = iv;
+		type=2;
 
         }
 
-	/**
-	 * public Interest handleContent(ContentObject result, Interest interest)
-	 *
-	 *This function catch the interest and 
-	 *
-	 *@param result		interest's data
-	 *@param interest	interest to be catch
-	 *
-	 *@result Interest	(without effect)
-	 */
+       /**
+        *public MyInterestListener(ContentName argName, ApplicationMA application)
+        *
+        *Constructor for check the exchange of the SecretKey
+        *
+        *@param key		SecretKey         
+        *@param iv     		algorithm parameters
+        *
+        */
+	
+	public MyInterestListener(SecretKey key,byte [] iv){
+		
+		this.key=key;
+		this.iv = iv;
+		type=1;
+	}
+
+       /**
+        *private static byte[] decrypt(byte[] inpBytes, Key key,byte[] iv)
+        *       
+        *This function decrypt input data for SecretKey encryptions
+        *
+        *
+        *@param inpBytes        bytes for decrypt
+        *@param key             key which use for decrypt
+        *@param iv              
+        *
+        *@return byte[]         decrypt data
+        *
+        */
+
+	private static byte[] decrypt(byte[] inpBytes,Key  key, byte [] iv) throws Exception{
+
+		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");		
+                cipher.init(Cipher.DECRYPT_MODE, key,new IvParameterSpec(iv));
+		return cipher.doFinal(inpBytes);
+        }
+
+
+       /**
+	* public Interest handleContent(ContentObject result, Interest interest)
+	*
+	*This function catch the interest and 
+	*
+	*@param result		interest's data
+	*@param interest	interest to be catch
+	*
+	*@return Interest	(without effect)
+	*
+	*/
 
          public Interest handleContent(ContentObject result, Interest interest) {
-                try{
+                try{	
                         byte []data=result.content();
+			data = this.decrypt(data,key,iv);
 
-			if(maID==null){
+			if(type==1){
 
-				applicationMa.handleContent(argName, data);
-			}else{
-                  
+				if(data[0]==11){
+	                                System.out.println("the key has been transfered correctly("+data[0]+")");
+				}
+
+			}else if(type==2){
+
+				applicationMa.handleContent(argName, data);				
+			}else{	
 	      			applicationMe.handleContent(argName, data,maID);
 			}
                 }catch(Exception e){
+			System.out.println("Something wrong happens in MyIL!!!");
+                        System.out.println(e);
 
                 }
 

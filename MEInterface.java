@@ -1,23 +1,3 @@
-//==============================================================================
-// Brief   : Management Entity Interface
-// Authors : Jaime Garcia <jgr@it.uc3m.es>
-//           Iván Vidal Fernández <ividal@it.uc3m.es>
-//           Daniel Corujo <dcorujo@av.it.pt>
-//------------------------------------------------------------------------------
-// Flexible Management Framework
-//
-// Copyright (C) 2013 Universidad Carlos III de Madrid
-// Copyright (C) 2013 Universidade Aveiro
-// Copyright (C) 2013 Instituto de Telecomunicações - Pólo Aveiro
-//
-// This software is distributed under a license. The full license
-// agreement can be found in the file LICENSE in this distribution.
-// This software may not be copied, modified, sold or distributed
-// other than expressed in the named license agreement.
-//
-// This software is distributed without any warranty.
-//==============================================================================
-
 package org.ccnx.ccn.utils;
 
 import java.lang.*;
@@ -39,7 +19,7 @@ import org.ccnx.ccn.protocol.ContentName;
 public interface MEInterface{
 
 /**
- *public byte[] handleInterest(ContentName filter);
+ *public byte[] handleInterest(ContentName filter ,String maID);
  *
  *Receives the data name which need to send and returns it
  *
@@ -50,7 +30,7 @@ public interface MEInterface{
 public byte[] handleInterest(ContentName filter, String maID);
 
 /**
- *public boolean authorizeContent(ContentName filter);
+ *public boolean authorizeContent(ContentName filter ,String maID);
  *
  *Authorizes or not to express an interest for do push petition
  *
@@ -61,7 +41,7 @@ public byte[] handleInterest(ContentName filter, String maID);
 public boolean authorizeContent(ContentName filter, String maID);
 
 /**
- *public void handleContent(ContentName filter,byte[] content);
+ *public void handleContent(ContentName filter,byte[] content ,String maID);
  *
  *Handles the data after push petition
  *

@@ -1,4 +1,5 @@
 
+
 package org.ccnx.ccn.utils;
 
 import java.lang.*;
@@ -75,7 +76,7 @@ public class ManagementEntity implements CCNFilterListener{
 
 	private byte [] iv = {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x10,0x11,0x12,0x13,0x14,0x15};
 
-	private Base64 bas;
+	private ccnBase64 bas;
 
 	private static final byte ACCEPT=1;
         private static final byte REJECT=0;
@@ -106,7 +107,7 @@ public class ManagementEntity implements CCNFilterListener{
 		prefix = new String(networkPrefix+managementCase);
 		repoData = new Hashtable();
 		MAData = new Hashtable();
-		bas=new Base64();
+		bas=new ccnBase64();
 		this.application=application;
 		handle = CCNHandle.open();
 		ContentName filter = ContentName.fromURI(prefix);                
@@ -129,7 +130,7 @@ public class ManagementEntity implements CCNFilterListener{
 	*
 	*/
 
-        private static synchronized byte[] encrypt(byte[] inpBytes, Key key, String xform,byte[] iv) throws Exception {
+        private static byte[] encrypt(byte[] inpBytes, Key key, String xform,byte[] iv) throws Exception {
                  Cipher cipher = Cipher.getInstance(xform);
                  cipher.init(Cipher.ENCRYPT_MODE, key,new IvParameterSpec(iv));
                  return cipher.doFinal(inpBytes);
@@ -150,7 +151,7 @@ public class ManagementEntity implements CCNFilterListener{
         *
         */
 
-        private static synchronized byte[] decrypt(byte[] inpBytes, Key key,byte[] iv) throws Exception{
+        private static byte[] decrypt(byte[] inpBytes, Key key,byte[] iv) throws Exception{
 		Cipher cipher = Cipher.getInstance(algorithm);
                 cipher.init(Cipher.DECRYPT_MODE,key,new IvParameterSpec(iv));
                 return cipher.doFinal(inpBytes);
@@ -178,45 +179,6 @@ public class ManagementEntity implements CCNFilterListener{
         }
 
        /**
-	*private String base64Filter(char [] name)
-	*
-	*This function transform Base64 network text into Base64 test
-	*
-	*@param name		name for analize
-	*
-	*@return String 	transformed name
-	*
-	*/
-
-	private String base64Filter(char [] name){
-
-                String test = "";
-                for(int i=1;i<name.length;i++){
-				
-				/*Transform %2B into +*/
-                                if(name[i]=='%' && name[i+1]=='2' && name[i+2]=='B'){
-
-                                        test=test+'+';
-                                        i=i+2;
-
-				/*Transform %3D into =*/
-                                }else if(name[i]=='%' && name[i+1]=='3' && name[i+2]=='D'){
-
-                                        test=test+'=';
-                                        i=i+2;
-                                }else{
-
-                                        test=test+name[i];
-
-                                }
-                 }
-
-                return test;
-
-        }
-
-
-       /**
         *private void sendMeid()
         *
         *This method initializes public and private key, then sends meID info and public key to MA
@@ -232,12 +194,13 @@ public class ManagementEntity implements CCNFilterListener{
                 	bkm.initialize();
 		
 			pKey=bkm.getPublicKey(handle.getDefaultPublisher());
+			String stringKey = bas.encodeToString(pKey.getEncoded());
 			pvKey=bkm.getSigningKey (handle.getDefaultPublisher());
 		}
-		String stringKey = bas.encodeToString(pKey.getEncoded());
+//		String stringKey = bas.encodeToString(pKey.getEncoded());
 		
 		/*Send message with meID info and public key*/
-		ContentObject co = ContentObject.buildContentObject (argName,ContentType.DATA,stringKey.getBytes(), null, null, null, 0, null);
+		ContentObject co = ContentObject.buildContentObject (argName,ContentType.DATA,pKey.getEncoded(), null, null, null, 0, null);
                 if ( handle.put(co) == null) System.out.println("Error: ContentObject could not be put in the CS");
 	}
 
@@ -262,12 +225,11 @@ public class ManagementEntity implements CCNFilterListener{
                 if ( handle.put(co) == null) System.out.println("Error: ContentObject could not be put in the CS");
 
 		/*Decode key*/
-		String stringKey = this.base64Filter((contentN.toString()).toCharArray());
-		byte[] encodedKey=bas.decode(stringKey);
+	//	String stringKey = this.base64Filter((contentN.toString()).toCharArray())/**/;
+		byte[] encodedKey=bas.decode(contentN.toString());//stringKey);
 		encodedKey=this.decryptP(encodedKey,pvKey, "RSA");
-		stringKey = new String(encodedKey,"UTF-8");
-	
-		encodedKey=bas.decode(stringKey);
+		//stringKey = new String(encodedKey,"UTF-8");
+		//encodedKey=bas.decode(stringKey);
     		SecretKey key = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES"); 
 		MAData.put(maID,key);
 
@@ -323,7 +285,7 @@ public class ManagementEntity implements CCNFilterListener{
                 if(!(name_cont.contains(KEY.toString()))){
                                 
                 	try{
-                		decrypted_name=this.base64Filter(decrypted_name.toCharArray());
+                		//decrypted_name=this.base64Filter(decrypted_name.toCharArray());
                         	byte[] crpt  = bas.decode(decrypted_name);
                         	crpt=this.decrypt(crpt,key,iv);
                         	decrypted_name=new String(crpt, "UTF-8");
@@ -333,7 +295,6 @@ public class ManagementEntity implements CCNFilterListener{
 			}
 
                 }
-                
 		return ContentName.fromURI(decrypted_name);
 
 	}
@@ -462,10 +423,10 @@ public class ManagementEntity implements CCNFilterListener{
                         argName=ContentName.fromURI(prefix+maID+meID+"/"+encrpt_argName);/*Interest's name*/
 
                         Interest interest = new Interest(argName);
-
                         ContentObject response =handle.get(interest, TIME);
 
-                        byte [] data=this.decrypt(response.content(),key,iv);
+                        byte[] data=this.decrypt(response.content(),key,iv);
+
                         /*Look for afirmative or negative reponse*/
                         if(data[0]==ACCEPT)return true;
 
@@ -484,7 +445,9 @@ public class ManagementEntity implements CCNFilterListener{
        /**
 	*public boolean handleInterest(Interest interest)
 	*
-	*This method works different in case of pull interest or push interest. If is a push interest it asks for an authorization to 	      *the application and expresses an interest if it confirms this. If is a pull interest it asks for a content to the 		    *application and puts it at the Content Store
+	*This method works different in case of pull interest or push interest 
+	*If is a push interest it asks for an authorization to the application and expresses an interest if it confirms this 
+	*If is a pull interest it asks for a content to the application and puts it at the Content Store
   	*
 	*@param Interest which catch for analyze
 	*@return boolean (without effect)
@@ -512,7 +475,6 @@ public class ManagementEntity implements CCNFilterListener{
 
 			/*Look for interest name and decode it if it is necesary*/
 			ContentName contentN=this.filterName(name_cont,maID);
-
 			if(name_cont.contains(KEY.toString())){
 
                                 this.testKey(contentN, interest, maID);

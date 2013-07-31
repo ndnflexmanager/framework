@@ -57,7 +57,6 @@ public class ApplicationME implements MEInterface{
         public boolean authorizeContent(ContentName filter, String maID){
 
                 return true;
-
         }
 
 

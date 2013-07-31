@@ -72,7 +72,7 @@ public class ManagementAgent implements CCNFilterListener {
 
 	private byte [] iv = {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x10,0x11,0x12,0x13,0x14,0x15};
 
-	private Base64 bas;
+	private ccnBase64 bas;
 
 	private SecretKey key;
 	private PublicKey pKey;
@@ -81,7 +81,7 @@ public class ManagementAgent implements CCNFilterListener {
 
 	private static final byte ACCEPT=1;
         private static final byte REJECT=0;
-	private static final long TIME=7000;
+	private static final long TIME=17000;
 	private static final String INTER="/Interest"; 
 	private static final String BOOTSTRAP="/ME";
 	private static final String KEY="/setKey";
@@ -90,12 +90,13 @@ public class ManagementAgent implements CCNFilterListener {
        /**
 	*public ManagementEntity (String networkPrefix, String managementCase, String meID, ApplicationME application)
 	*
-	*Constructor for bootstrapping. All String parameters must start with slash ("/")
+	*Constructor for bootstrapping  
+	*All String parameters must start with slash ("/")
 	*
-	*@networkPrefix		net's prefix
-	*@managementCase	net's prefix
-	*@maID			ManagementAgent identificator
-	*@application		application which uses this API
+	*@param networkPrefix		net's prefix
+	*@param managementCase	        net's prefix
+	*@param maID			ManagementAgent identificator
+	*@param application		application which uses this API
 	*
 	*/
 
@@ -108,7 +109,7 @@ public class ManagementAgent implements CCNFilterListener {
 		prefix = new String(networkPrefix+managementCase);
 		this.application=application;
 		repoData = new Hashtable();
-		bas =new Base64();
+		bas =new ccnBase64();
 		handle = CCNHandle.open();
 		ContentName filter = ContentName.fromURI(prefix+maID);                
 		handle.registerFilter(filter, this);
@@ -120,7 +121,8 @@ public class ManagementAgent implements CCNFilterListener {
        /**
 	*ManagementAgent (String networkPrefix, String managementCase, String maID, String meID, ApplicationMA application)
 	*
-	*Constructor without bootstrapping. All String parameters must start with slash ("/")
+	*Constructor without bootstrapping
+	*All String parameters must start with slash ("/")
 	*
 	*@param networkPrefix		net's prefix
 	*@param managementCase		net's prefix
@@ -210,42 +212,6 @@ public class ManagementAgent implements CCNFilterListener {
   	}
 
        /**
-        *private String base64Filter(char [] name)
-        *
-        *This function transform Base64 network text into Base64 test
-        *
-        *@param name            name for analize
-        *
-        *@return String         transformed name
-        *
-        */
-
-	private String base64Filter(char [] name){
-
-		String test = "";
-                for(int i=1;i<name.length;i++){
-
-                                if(name[i]=='%' && name[i+1]=='2' && name[i+2]=='B'){
-
-                                        test=test+'+';
-                                        i=i+2;
-
-                                }else if(name[i]=='%' && name[i+1]=='3' && name[i+2]=='D'){
-
-                                        test=test+'=';
-                                        i=i+2;
-                                }else{
-
-                                        test=test+name[i];
-
-                                }
-                 }
-
-		return test;
-
-	}
-	
-       /**
 	*private byte[] responseTest(ContentName contentN)
 	*
 	*This method reads the challenge and modifies the data to response it
@@ -258,8 +224,7 @@ public class ManagementAgent implements CCNFilterListener {
 	
 	private byte[] responseTest(ContentName contentN) throws Exception{
 
-                String test = this.base64Filter((contentN.toString()).toCharArray());
-                byte[] dataChallenge  = bas.decode(test);
+                byte[] dataChallenge  = bas.decode(contentN.toString());
 		dataChallenge=this.decrypt(dataChallenge,key,iv);
 
 		int dataSend= ((int)dataChallenge[0])+1;
@@ -281,11 +246,8 @@ public class ManagementAgent implements CCNFilterListener {
                 Interest interest = new Interest(argName);
 
                 ContentObject co = handle.get(interest, TIME);
-		String keyName= new String(co.content(),"UTF-8");
-                byte[] encodedKey  = bas.decode(keyName);
-		pKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(encodedKey));
+		pKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(co.content()));
 		String stringKey = bas.encodeToString(pKey.getEncoded());
-		
                 char [] analyzeMEId = (co.name().toString()).toCharArray();
 
                 if(meID==null){
@@ -319,16 +281,9 @@ public class ManagementAgent implements CCNFilterListener {
                 }
                 catch (Exception e) {}
 		                
-
-                if (key != null) {
-
-                        stringKey = bas.encodeToString(key.getEncoded());
-
-                }
-                     
 		/*Send key into an interest and wait for ack*/
-
-		stringKey = bas.encodeToString(this.encryptP(stringKey.getBytes(),pKey,"RSA"));
+		stringKey = bas.encodeToString(this.encryptP(key.getEncoded(),pKey,"RSA"));
+		System.out.println("-*-*-*-*-*-*-*-*-*-EncodedKey"+stringKey);
                 ContentName argNameKey=ContentName.fromURI(prefix+meID+maID+KEY+"/"+stringKey);/*Interest name*/
                 Interest interest = new Interest(argNameKey);
 
@@ -357,8 +312,6 @@ public class ManagementAgent implements CCNFilterListener {
 
 
                 try{
-            
-	     		decrypted_name=this.base64Filter(decrypted_name.toCharArray());
                         byte[] crpt  = bas.decode(decrypted_name);
                         crpt=this.decrypt(crpt,key,iv);
                         decrypted_name=new String(crpt, "UTF-8");
@@ -425,6 +378,7 @@ public class ManagementAgent implements CCNFilterListener {
 		try {
 			byte [] crpt=this.encrypt(argName.toString().getBytes(), key, algorithmCipher,iv);
                         String encrpt_argName= bas.encodeToString(crpt);
+
                         argName=ContentName.fromURI(prefix+meID+maID+"/"+encrpt_argName);/*Interest's name*/
 			Interest interest = new Interest(argName);
 			ContentObject co = handle.get(interest, TIME);
@@ -462,13 +416,12 @@ public class ManagementAgent implements CCNFilterListener {
 			String encrpt_argName=INTER.toString()+argName.toString();
         		byte [] crpt=this.encrypt(encrpt_argName.getBytes(), key, algorithmCipher,iv);
                         encrpt_argName= bas.encodeToString(crpt);
-
                         argName=ContentName.fromURI(prefix+meID+maID+"/"+encrpt_argName);/*Interest's name*/
 
                         Interest interest = new Interest(argName);
                         ContentObject response =handle.get(interest, TIME);
 
-			byte [] data=this.decrypt(response.content(),key,iv);
+			byte[] data=this.decrypt(response.content(),key,iv);
 			/*Look for afirmative or negative reponse*/
                         if(data[0]==ACCEPT)return true;
 
@@ -487,9 +440,9 @@ public class ManagementAgent implements CCNFilterListener {
        /**
 	*public boolean handleInterest(Interest interest)
 	*
-	*This method works different in case of pull interest or push interest. If is a push interest it asks for an authorization to
-	*the application and expresses an interest if it confirms this. If is a pull interest it asks for a content to the application
-	*and puts it at the Content Store.
+	*This method works different in case of pull interest or push interest
+	*If is a push interest it asks for an authorization to the application and expresses an interest if it confirms this
+	*If is a pull interest it asks for a content to the application and puts it at the Content Store.
 	*
 	*@param Interest which catch for analyze
 	*@return boolean (without effect)
@@ -507,8 +460,7 @@ public class ManagementAgent implements CCNFilterListener {
 
 				ContentName contentN=ContentName.fromURI(name_cont.substring(length_prefix));
 
-				byte [] data=this.responseTest(contentN);
-                                ContentObject co = ContentObject.buildContentObject (interest.name(),ContentType.DATA, data, null, null, null, 0, null);
+                                ContentObject co = ContentObject.buildContentObject (interest.name(),ContentType.DATA, this.responseTest(contentN), null, null, null, 0, null);
                                 /*Return asked data*/
                                 if ( handle.put(co) == null) System.out.println("Error: ContentObject could not be put in the CS");
 				

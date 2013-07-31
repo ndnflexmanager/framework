@@ -11,7 +11,6 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.protocol.ContentName;
 
-
 /**
  *Interfaz for ManagementEntity application
  */
